@@ -150,7 +150,80 @@ simulate_dat <- function(dat, at, network = 1L, nsteps = 1L) {
                                   time.start = at - time_offset,
                                   time.offset = time_offset,
                                   time.slices = nsteps,
-                                  output = output,
+                                  output = "ergm_state",
+                                  control = simulation_control,
+                                  monitor = monitor,
+                                  dynamic = TRUE))
+
+  simulation_control$parallel <- 0
+  
+  nw2 <- simulate(
+    nw, coef = coef, output = "ergm_state", control = simulation_control
+    )
+
+  ## update network (and el, if tergmLite) on the dat object
+  dat <- set_network(x = dat, network = network, nw = nw)
+
+  ## if monitor was used, record the results
+  if (!is.null(monitor)) {
+    new.nwstats <- attributes(nw)$stats
+    keep.cols <- which(!duplicated(colnames(new.nwstats)))
+    new.nwstats <- new.nwstats[, keep.cols, drop = FALSE]
+    dat$stats$nwstats[[network]] <- list(as_tibble(new.nwstats))
+  }
+
+  return(dat)
+}
+
+#' @export
+#' @rdname simulate_dat
+simulate_dat2 <- function(dat, at, network = 1L, nsteps = 1L) {
+  ## determine formula and coefficients; set discordance_fraction in ergm case
+  nwparam <- get_nwparam(dat, network = network)
+  simulation_control <- get_network_control(dat, network, "set.control.tergm")
+  if (nwparam$coef.diss$duration[1] > 1) {
+    formula <- ~Form(nwparam$formation) +
+      Persist(nwparam$coef.diss$dissolution)
+    coef <- c(nwparam$coef.form, nwparam$coef.diss$coef.adj)
+  } else {
+    formula <- nwparam$formation
+    coef <- nwparam$coef.form
+    simulation_control$MCMC.prop.args <- list(discordance_fraction = 0)
+  }
+  simulation_control$parallel <- 0
+
+  ## determine output type
+  if (get_control(dat, "tergmLite") == FALSE) {
+    output <- "networkDynamic"
+  } else {
+    output <- "final"
+  }
+
+  ## determine monitor, if needed; note that we only obtain
+  ## stats in simulate_dat if resimulate.network == FALSE
+  if (get_control(dat, "save.nwstats") == TRUE &&
+        get_control(dat, "resimulate.network") == FALSE) {
+    monitor <- get_network_control(dat, network, "nwstats.formula")
+  } else {
+    monitor <- NULL # will be handled by summary_nets, if needed
+  }
+
+  if (get_control(dat, "tergmLite") == FALSE &&
+        get_control(dat, "resimulate.network") == TRUE) {
+    time_offset <- 0L
+  } else {
+    time_offset <- 1L
+  }
+
+  ## always TERGM simulation
+  nw2 <- suppressWarnings(simulate(nw,
+                                  coef = coef,
+                                  basis = get_network(x = dat, network = network),
+                                  constraints = nwparam$constraints,
+                                  time.start = at - time_offset,
+                                  time.offset = time_offset,
+                                  time.slices = nsteps,
+                                  output = "ergm_state",
                                   control = simulation_control,
                                   monitor = monitor,
                                   dynamic = TRUE))

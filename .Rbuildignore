@@ -20,5 +20,8 @@ inst/JSS/
 ^_pkgdown\.yml$
 ^docs$
 ^pkgdown$
+
+# gvegayon's PR
 ^benchmark_.*\.R$
 ^profile\.html$
+^.devcontainer$

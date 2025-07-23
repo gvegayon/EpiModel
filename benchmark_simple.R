@@ -6,22 +6,23 @@
 # Date: July 16, 2025
 # Purpose: Minimal baseline benchmark for EpiModel netsim performance
 
-library(EpiModel)
+# library(EpiModel)
+devtools::load_all()
 
 # Set seed for reproducibility
 set.seed(12345)
 
 cat("Starting minimal EpiModel benchmark...\n")
-cat("Network: 1000 nodes, 30 days, 10 sims\n\n")
+cat("Network: 500 nodes, 30 days, 10 sims\n\n")
 
 start_time <- Sys.time()
 
 # 1. Simple network initialization
-nw <- network_initialize(n = 1000)
+nw <- network_initialize(n = 500)
 
 # 2. Simplest possible formation model (edges only)
 formation <- ~edges
-target.stats <- 500  # ~0.1% density
+target.stats <- 50  # ~0.1% density
 coef.diss <- dissolution_coefs(dissolution = ~offset(edges), duration = 20)
 
 # 3. Estimate network model
@@ -38,6 +39,7 @@ control <- control.net(type = "SI", nsteps = 30, nsims = 10,
 # 5. Run simulation and time it
 cat("Running simulation...\n")
 sim_start <- Sys.time()
+trace(ergm:::simulate.ergm_state_full, quote(save(list=ls(), file="epimodel_dump.rda")))
 mod <- netsim(est, param, init, control)
 sim_end <- Sys.time()
 
